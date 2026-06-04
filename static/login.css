@@ -244,6 +244,12 @@ body {
     transform: translateY(0);
 }
 
+.btn-login:focus-visible,
+.toggle-password:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
 .auth-divider {
     text-align: center;
     margin: 1.5rem 0;
