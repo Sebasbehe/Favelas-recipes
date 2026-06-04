@@ -69,6 +69,10 @@ body {
     border-radius: 10px;
 }
 
+.auth-card::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
 .auth-header {
     text-align: center;
     margin-bottom: 2rem;
