@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.auth import get_current_user
-from app.models import User, Recipe, Ingredient
+from app.models import User, Recipe, Ingredient, Rating
 from app.services.llm_service import generate_recipe_from_ingredients
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
@@ -51,22 +51,22 @@ async def get_recipes(
     return recipes
 
 
-@router.get("/{recipe_id}")
-async def get_recipe(
-    recipe_id: int,
+@router.get("/stats/summary")
+async def get_recipe_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Obtener una receta específica"""
-    recipe = db.query(Recipe).filter(
-        Recipe.id == recipe_id,
-        Recipe.user_id == current_user.id
-    ).first()
+    """Obtener estadísticas de recetas del usuario"""
+    total = db.query(Recipe).filter(Recipe.user_id == current_user.id).count()
+    favorites = db.query(Recipe).filter(
+        Recipe.user_id == current_user.id,
+        Recipe.is_favorite == True
+    ).count()
     
-    if not recipe:
-        raise HTTPException(status_code=404, detail="Receta no encontrada")
-    
-    return recipe
+    return {
+        "total": total,
+        "favorites": favorites
+    }
 
 
 @router.post("/generate")
@@ -77,7 +77,6 @@ async def generate_recipe(
 ):
     """Generar una nueva receta usando IA basada en los ingredientes del usuario"""
     
-    # Obtener ingredientes del usuario
     ingredients = db.query(Ingredient).filter(
         Ingredient.user_id == current_user.id
     ).all()
@@ -91,10 +90,8 @@ async def generate_recipe(
     ingredient_names = [i.name for i in ingredients]
     
     try:
-        # Llamar al servicio LLM
         recipe_data = await generate_recipe_from_ingredients(ingredient_names)
         
-        # Guardar receta en BD
         new_recipe = Recipe(
             name=recipe_data.get("nombre", "Receta Generada"),
             description=recipe_data.get("descripcion", ""),
@@ -139,6 +136,24 @@ async def toggle_favorite(
     return {"is_favorite": recipe.is_favorite}
 
 
+@router.get("/{recipe_id}")
+async def get_recipe(
+    recipe_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Obtener una receta específica"""
+    recipe = db.query(Recipe).filter(
+        Recipe.id == recipe_id,
+        Recipe.user_id == current_user.id
+    ).first()
+    
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Receta no encontrada")
+    
+    return recipe
+
+
 @router.delete("/{recipe_id}")
 async def delete_recipe(
     recipe_id: int,
@@ -154,28 +169,8 @@ async def delete_recipe(
     if not recipe:
         raise HTTPException(status_code=404, detail="Receta no encontrada")
     
-    # Eliminar calificaciones asociadas
     db.query(Rating).filter(Rating.recipe_id == recipe_id).delete()
-    
     db.delete(recipe)
     db.commit()
     
     return {"message": "Receta eliminada correctamente"}
-
-
-@router.get("/stats/summary")
-async def get_recipe_stats(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Obtener estadísticas de recetas del usuario"""
-    total = db.query(Recipe).filter(Recipe.user_id == current_user.id).count()
-    favorites = db.query(Recipe).filter(
-        Recipe.user_id == current_user.id,
-        Recipe.is_favorite == True
-    ).count()
-    
-    return {
-        "total": total,
-        "favorites": favorites
-    }
