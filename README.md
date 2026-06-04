@@ -1,55 +1,33 @@
-# Generador de Recetas con IA
+# Favelas Recipes 🍳
 
-Aplicación web desarrollada con FastAPI que permite gestionar ingredientes, generar recetas utilizando inteligencia artificial y almacenar calificaciones de los usuarios.
+Aplicación web desarrollada con FastAPI que genera recetas usando inteligencia artificial basándose en los ingredientes disponibles del usuario.
 
 ## Tecnologías
 
-- FastAPI
-- PostgreSQL
-- SQLAlchemy
-- Docker
-- OpenRouter
+- **FastAPI** — backend y API REST
+- **PostgreSQL** — base de datos
+- **SQLAlchemy** — ORM
+- **Docker & Docker Compose** — contenedorización
+- **OpenRouter** — servicio LLM para generación de recetas
+- **JWT** — autenticación
 
 ## Requisitos previos
 
-Antes de ejecutar el proyecto, asegúrese de tener instalado:
+- Python 3.10 o superior
+- Docker Desktop
+- Git
 
-Python 3.10 o superior
-PostgreSQL
-Docker Desktop
-Git
+## Instalación y ejecución
 
-## Instalación
-1. Clonar el repositorio
-        ```bash
-        git clone https://github.com/Sebasbehe/Favelas-recipes.git
-        ```
-
-2. Crear y activar un entorno virtual:
+1. Clonar el repositorio:
 ```bash
-python -m venv venv
-```        
-
-3. Instalar dependencias:
-```bash
-pip install -r requirements.txt
+git clone https://github.com/Sebasbehe/Favelas-recipes.git
+cd Favelas-recipes
 ```
 
+2. Copiar las variables de entorno:
 ```bash
-docker-compose up --build
+cp .env.example .env
 ```
 
-## Variables de entorno
-
-Revisar `.env.example`
-
-## Endpoints
-
-- /auth
-- /ingredients
-- /recipes
-- /ratings
-
-## Swagger
-
-/docs
+3. Editar `.env` y completar los valores:
