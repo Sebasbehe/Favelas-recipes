@@ -1,1 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredientes - Favelas Recipes</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-utensils"></i>
+                <h1>Favelas Recipes</h1>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="/" class="nav-link">Dashboard</a></li>
+                <li><a href="/ingredients" class="nav-link active">Ingredientes</a></li>
+                <li><a href="/recipes" class="nav-link">Recetas</a></li>
+                <li><a href="/profile" class="nav-link">Perfil</a></li>
+                <li><a href="/logout" class="nav-link logout">Salir</a></li>
+            </ul>
+        </div>
+    </nav>
 
+    <main class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-cube"></i> Mis Ingredientes</h3>
+                <button class="btn btn-primary" id="addIngredientBtn">
+                    <i class="fas fa-plus"></i> Agregar Ingrediente
+                </button>
+            </div>
+            <div class="recipes-list" id="ingredientsList">
+                <div class="empty-recipes">
+                    <i class="fas fa-box-open"></i>
+                    <p>Cargando ingredientes...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para agregar/editar ingrediente -->
+    <div id="ingredientModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 1rem; padding: 2rem; max-width: 500px; width: 90%; margin: auto;">
+            <h3 id="modalTitle">Agregar Ingrediente</h3>
+            <form id="ingredientForm">
+                <input type="hidden" id="ingredientId">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Nombre del ingrediente</label>
+                    <input type="text" id="ingredientName" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.5rem;" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Cantidad</label>
+                    <input type="text" id="ingredientQuantity" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.5rem;" placeholder="Ej: 2 unidades, 500g">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Categoría</label>
+                    <select id="ingredientCategory" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+                        <option value="">Seleccionar</option>
+                        <option value="Verduras">Verduras</option>
+                        <option value="Frutas">Frutas</option>
+                        <option value="Carnes">Carnes</option>
+                        <option value="Lácteos">Lácteos</option>
+                        <option value="Granos">Granos</option>
+                        <option value="Condimentos">Condimentos</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" id="closeModalBtn" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let token = localStorage.getItem('access_token');
+
+        async function loadIngredients() {
+            const container = document.getElementById('ingredientsList');
+            try {
+                const response = await fetch('/api/ingredients/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const ingredients = await response.json();
+                    if (ingredients.length === 0) {
+                        container.innerHTML = `<div class="empty-recipes"><i class="fas fa-box-open"></i><p>No tienes ingredientes agregados</p><button onclick="openModal()" class="btn btn-primary">Agregar primero</button></div>`;
+                    } else {
+                        container.innerHTML = ingredients.map(ing => `
+                            <div class="recipe-item">
+                                <div class="recipe-header">
+                                    <h4><i class="fas fa-apple-alt"></i> ${ing.name}</h4>
+                                    <div class="recipe-actions">
+                                        <button class="btn-icon" onclick="editIngredient(${ing.id}, '${ing.name}', '${ing.quantity || ''}', '${ing.category || ''}')"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-icon" onclick="deleteIngredient(${ing.id})"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </div>
+                                <p class="recipe-description">${ing.quantity || 'Sin cantidad especificada'} • ${ing.category || 'Sin categoría'}</p>
+                            </div>
+                        `).join('');
+                    }
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteIngredient(id) {
+            if (confirm('¿Eliminar este ingrediente?')) {
+                const response = await fetch(`/api/ingredients/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    showToast('Ingrediente eliminado', 'success');
+                    loadIngredients();
+                }
+            }
+        }
+
+        function openModal(ingredient = null) {
+            const modal = document.getElementById('ingredientModal');
+            modal.style.display = 'flex';
+            if (ingredient) {
+                document.getElementById('modalTitle').textContent = 'Editar Ingrediente';
+                document.getElementById('ingredientId').value = ingredient.id;
+                document.getElementById('ingredientName').value = ingredient.name;
+                document.getElementById('ingredientQuantity').value = ingredient.quantity || '';
+                document.getElementById('ingredientCategory').value = ingredient.category || '';
+            } else {
+                document.getElementById('modalTitle').textContent = 'Agregar Ingrediente';
+                document.getElementById('ingredientForm').reset();
+                document.getElementById('ingredientId').value = '';
+            }
+        }
+
+        function editIngredient(id, name, quantity, category) {
+            openModal({ id, name, quantity, category });
+        }
+
+        document.getElementById('addIngredientBtn')?.addEventListener('click', () => openModal());
+        document.getElementById('closeModalBtn')?.addEventListener('click', () => {
+            document.getElementById('ingredientModal').style.display = 'none';
+        });
+
+        document.getElementById('ingredientForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('ingredientId').value;
+            const data = {
+                name: document.getElementById('ingredientName').value,
+                quantity: document.getElementById('ingredientQuantity').value,
+                category: document.getElementById('ingredientCategory').value
+            };
+
+            const url = id ? `/api/ingredients/${id}` : '/api/ingredients/';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                showToast(id ? 'Ingrediente actualizado' : 'Ingrediente agregado', 'success');
+                document.getElementById('ingredientModal').style.display = 'none';
+                loadIngredients();
+            }
+        });
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `position: fixed; bottom: 2rem; right: 2rem; padding: 1rem; background: ${type === 'success' ? '#10b981' : '#ef4444'}; color: white; border-radius: 0.5rem; z-index: 2000;`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        loadIngredients();
+    </script>
+</body>
+</html>
