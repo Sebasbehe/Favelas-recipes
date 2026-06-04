@@ -9,8 +9,14 @@ class RatingCreate(BaseModel):
 
     stars: int = Field(
         ge=1,
-        le=5
+        le=5,
+        description="Recipe rating from 1 to 5 stars"
     )
 
-    recipe_id: int
-    user_id: int
+    recipe_id: int = Field(
+        description="ID of the recipe being rated"
+    )
+
+    user_id: int = Field(
+        description="ID of the user submitting the rating"
+    )
