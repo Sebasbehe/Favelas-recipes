@@ -124,6 +124,14 @@ body {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
+.form-group input:invalid {
+    border-color: var(--danger);
+}
+
+.form-group input:invalid:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
 .password-wrapper {
     position: relative;
 }
