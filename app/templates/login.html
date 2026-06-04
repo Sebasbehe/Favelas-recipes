@@ -1,170 +1,101 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Login - Favelas Recipes AI</title>
-
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-<style>
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;
-}
-
-body{
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-background:linear-gradient(135deg,#1e3c72,#2a5298);
-}
-
-.card{
-background:white;
-padding:40px;
-width:400px;
-border-radius:20px;
-box-shadow:0 10px 30px rgba(0,0,0,.2);
-animation:fade .7s;
-}
-
-@keyframes fade{
-from{
-opacity:0;
-transform:translateY(20px);
-}
-to{
-opacity:1;
-transform:translateY(0);
-}
-}
-
-h1{
-text-align:center;
-margin-bottom:20px;
-}
-
-.input-group{
-margin-bottom:15px;
-}
-
-input{
-width:100%;
-padding:12px;
-border:1px solid #ddd;
-border-radius:10px;
-}
-
-button{
-width:100%;
-padding:12px;
-background:#2a5298;
-color:white;
-border:none;
-border-radius:10px;
-cursor:pointer;
-}
-
-button:hover{
-background:#1e3c72;
-}
-
-.link{
-text-align:center;
-margin-top:15px;
-}
-
-a{
-text-decoration:none;
-color:#2a5298;
-}
-</style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Favelas Recipes</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/login.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Logo y título -->
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <h1>Favelas Recipes</h1>
+                <p>Inicia sesión para descubrir recetas increíbles</p>
+            </div>
 
-<div class="card">
+            <!-- Formulario de login -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Correo electrónico
+                    </label>
+                    <input type="email" id="email" name="email" 
+                           placeholder="tu@email.com" required autocomplete="email">
+                </div>
 
-<h1><i class="fa-solid fa-utensils"></i> Favelas Recipes</h1>
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Contraseña
+                    </label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" 
+                               placeholder="••••••••" required autocomplete="current-password">
+                        <button type="button" class="toggle-password" aria-label="Mostrar contraseña">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
 
-<form id="loginForm">
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember">
+                        <span class="checkmark"></span>
+                        Recordarme
+                    </label>
+                    <a href="/forgot-password" class="forgot-link">¿Olvidaste tu contraseña?</a>
+                </div>
 
-<input
-type="text"
-id="username"
-placeholder="Usuario"
-required
->
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Iniciar Sesión
+                </button>
+            </form>
 
-<input
-type="password"
-id="password"
-placeholder="Contraseña"
-required
->
+            <!-- Separador -->
+            <div class="auth-divider">
+                <span>o</span>
+            </div>
 
-<button type="submit">
-Iniciar Sesión
-</button>
+            <!-- Demo credentials -->
+            <div class="demo-credentials">
+                <p class="demo-title">
+                    <i class="fas fa-flask"></i>
+                    Credenciales de demostración
+                </p>
+                <div class="demo-box">
+                    <code>demo@favelas.com</code>
+                    <span class="demo-sep">•</span>
+                    <code>demo123</code>
+                </div>
+                <button type="button" id="fillDemoBtn" class="btn-demo">
+                    <i class="fas fa-robot"></i>
+                    Usar demo
+                </button>
+            </div>
 
-</form>
+            <!-- Link a registro -->
+            <div class="auth-footer">
+                <p>¿No tienes cuenta? 
+                    <a href="/register" class="register-link">Regístrate gratis</a>
+                </p>
+            </div>
+        </div>
 
-<script>
-document
-.getElementById("loginForm")
-.addEventListener("submit", async (e)=>{
+        <!-- Mensaje de error/toast -->
+        <div id="toast" class="toast hidden">
+            <span class="toast-icon"></span>
+            <span class="toast-message"></span>
+        </div>
+    </div>
 
-e.preventDefault();
-
-const response = await fetch(
-"/auth/login",
-{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-username:
-document.getElementById("username").value,
-password:
-document.getElementById("password").value
-})
-}
-);
-
-const data = await response.json();
-
-if(response.ok){
-
-localStorage.setItem(
-"token",
-data.access_token
-);
-
-alert("Login exitoso");
-
-window.location.href =
-"/dashboard";
-
-}else{
-
-alert(data.detail);
-
-}
-
-});
-</script>
-
-</div>
-
+    <script src="{{ url_for('static', path='js/login.js') }}"></script>
 </body>
 </html>
-```
