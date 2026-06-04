@@ -51,6 +51,14 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
+.auth-card {
+    transition: transform 0.3s ease;
+}
+
+.auth-card:hover {
+    transform: translateY(-3px);
+}
+
 .auth-header {
     text-align: center;
     margin-bottom: 2rem;
