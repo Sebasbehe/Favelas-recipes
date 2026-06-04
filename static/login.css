@@ -399,6 +399,14 @@ body {
     .auth-card {
         padding: 1.5rem;
     }
+
+    .auth-header h1 {
+        font-size: 1.4rem;
+    }
+
+    .auth-header p {
+        font-size: 0.8rem;
+    }
     
     .toast {
         left: 1rem;
