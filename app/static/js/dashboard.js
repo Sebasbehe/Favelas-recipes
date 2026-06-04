@@ -338,3 +338,9 @@ window.addEventListener('load', () => {
     console.log('Dashboard cargado correctamente');
     // loadDashboardData();
 });
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+
+    window.location.href = '/login';
+});
