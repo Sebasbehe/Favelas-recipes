@@ -1,27 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
-from sqlalchemy import func
 
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import User, Ingredient
 
-router = APIRouter(prefix="/api/ingredients", tags=["ingredients"])
+router = APIRouter(
+    prefix="/api/ingredients",
+    tags=["ingredients"]
+)
 
 # Schemas
+
 class IngredientCreate(BaseModel):
     name: str
     quantity: str = ""
-    category: str = ""
+
 
 class IngredientResponse(BaseModel):
     id: int
     name: str
     quantity: str
-    category: str
 
     class Config:
         from_attributes = True
@@ -32,10 +33,12 @@ async def get_ingredients(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Obtener todos los ingredientes del usuario"""
-    ingredients = db.query(Ingredient).filter(
-        Ingredient.user_id == current_user.id
-    ).all()
+    ingredients = (
+        db.query(Ingredient)
+        .filter(Ingredient.user_id == current_user.id)
+        .all()
+    )
+
     return ingredients
 
 
@@ -45,17 +48,48 @@ async def create_ingredient(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Agregar un nuevo ingrediente"""
     new_ingredient = Ingredient(
         name=ingredient.name,
         quantity=ingredient.quantity,
-        category=ingredient.category,
         user_id=current_user.id
     )
+
     db.add(new_ingredient)
     db.commit()
     db.refresh(new_ingredient)
+
     return new_ingredient
+
+
+@router.put("/{ingredient_id}", response_model=IngredientResponse)
+async def update_ingredient(
+    ingredient_id: int,
+    ingredient: IngredientCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_ingredient = (
+        db.query(Ingredient)
+        .filter(
+            Ingredient.id == ingredient_id,
+            Ingredient.user_id == current_user.id
+        )
+        .first()
+    )
+
+    if not db_ingredient:
+        raise HTTPException(
+            status_code=404,
+            detail="Ingrediente no encontrado"
+        )
+
+    db_ingredient.name = ingredient.name
+    db_ingredient.quantity = ingredient.quantity
+
+    db.commit()
+    db.refresh(db_ingredient)
+
+    return db_ingredient
 
 
 @router.delete("/{ingredient_id}")
@@ -64,43 +98,27 @@ async def delete_ingredient(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Eliminar un ingrediente"""
-    ingredient = db.query(Ingredient).filter(
-        Ingredient.id == ingredient_id,
-        Ingredient.user_id == current_user.id
-    ).first()
-    
+    ingredient = (
+        db.query(Ingredient)
+        .filter(
+            Ingredient.id == ingredient_id,
+            Ingredient.user_id == current_user.id
+        )
+        .first()
+    )
+
     if not ingredient:
-        raise HTTPException(status_code=404, detail="Ingrediente no encontrado")
-    
+        raise HTTPException(
+            status_code=404,
+            detail="Ingrediente no encontrado"
+        )
+
     db.delete(ingredient)
     db.commit()
-    return {"message": "Ingrediente eliminado correctamente"}
 
-
-@router.put("/{ingredient_id}")
-async def update_ingredient(
-    ingredient_id: int,
-    ingredient: IngredientCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Actualizar un ingrediente"""
-    db_ingredient = db.query(Ingredient).filter(
-        Ingredient.id == ingredient_id,
-        Ingredient.user_id == current_user.id
-    ).first()
-    
-    if not db_ingredient:
-        raise HTTPException(status_code=404, detail="Ingrediente no encontrado")
-    
-    db_ingredient.name = ingredient.name
-    db_ingredient.quantity = ingredient.quantity
-    db_ingredient.category = ingredient.category
-    
-    db.commit()
-    db.refresh(db_ingredient)
-    return db_ingredient
+    return {
+        "message": "Ingrediente eliminado correctamente"
+    }
 
 
 @router.get("/stats")
@@ -108,15 +126,14 @@ async def get_ingredient_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Obtener estadísticas de ingredientes"""
-    total = db.query(Ingredient).filter(Ingredient.user_id == current_user.id).count()
-    
-    # Contar por categoría
-    categories = db.query(Ingredient.category, func.count(Ingredient.id)).filter(
-        Ingredient.user_id == current_user.id
-    ).group_by(Ingredient.category).all()
-    
+    total = (
+        db.query(Ingredient)
+        .filter(
+            Ingredient.user_id == current_user.id
+        )
+        .count()
+    )
+
     return {
-        "total": total,
-        "categories": [{"name": cat, "count": count} for cat, count in categories]
+        "total": total
     }
