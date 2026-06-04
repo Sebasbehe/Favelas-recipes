@@ -1,99 +1,121 @@
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import HTTPException
-
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from typing import List
+from pydantic import BaseModel
 
 from app.database import get_db
-from app.models.ingredient import Ingredient
-from app.schemas.ingredient import (
-    IngredientCreate,
-    IngredientResponse
-)
-router = APIRouter(
-    prefix="/ingredients",
-    tags=["Ingredients"]
-)
+from app.auth import get_current_user
+from app.models import User, Ingredient
 
-@router.post("/")
-def create_ingredient(
-    ingredient: IngredientCreate,
+router = APIRouter(prefix="/api/ingredients", tags=["ingredients"])
+
+# Schemas
+class IngredientCreate(BaseModel):
+    name: str
+    quantity: str = ""
+    category: str = ""
+
+class IngredientResponse(BaseModel):
+    id: int
+    name: str
+    quantity: str
+    category: str
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/", response_model=List[IngredientResponse])
+async def get_ingredients(
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Obtener todos los ingredientes del usuario"""
+    ingredients = db.query(Ingredient).filter(
+        Ingredient.user_id == current_user.id
+    ).all()
+    return ingredients
 
+
+@router.post("/", response_model=IngredientResponse)
+async def create_ingredient(
+    ingredient: IngredientCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Agregar un nuevo ingrediente"""
     new_ingredient = Ingredient(
-    name=ingredient.name,
-    quantity=ingredient.quantity,
-    user_id=ingredient.user_id
-)
-
+        name=ingredient.name,
+        quantity=ingredient.quantity,
+        category=ingredient.category,
+        user_id=current_user.id
+    )
     db.add(new_ingredient)
     db.commit()
     db.refresh(new_ingredient)
-
     return new_ingredient
 
 
-@router.get("/")
-def get_ingredients(
+@router.delete("/{ingredient_id}")
+async def delete_ingredient(
+    ingredient_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return db.query(
-        Ingredient
-    ).all()
+    """Eliminar un ingrediente"""
+    ingredient = db.query(Ingredient).filter(
+        Ingredient.id == ingredient_id,
+        Ingredient.user_id == current_user.id
+    ).first()
+    
+    if not ingredient:
+        raise HTTPException(status_code=404, detail="Ingrediente no encontrado")
+    
+    db.delete(ingredient)
+    db.commit()
+    return {"message": "Ingrediente eliminado correctamente"}
 
 
-@router.put(
-    "/{ingredient_id}",
-    response_model=IngredientResponse
-)
-def update_ingredient(
+@router.put("/{ingredient_id}")
+async def update_ingredient(
     ingredient_id: int,
     ingredient: IngredientCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    db_ingredient = (
-        db.query(Ingredient)
-        .filter(Ingredient.id == ingredient_id)
-        .first()
-    )
-
+    """Actualizar un ingrediente"""
+    db_ingredient = db.query(Ingredient).filter(
+        Ingredient.id == ingredient_id,
+        Ingredient.user_id == current_user.id
+    ).first()
+    
     if not db_ingredient:
-        raise HTTPException(
-            status_code=404,
-            detail="Ingrediente no encontrado"
-        )
-
+        raise HTTPException(status_code=404, detail="Ingrediente no encontrado")
+    
     db_ingredient.name = ingredient.name
     db_ingredient.quantity = ingredient.quantity
-
+    db_ingredient.category = ingredient.category
+    
     db.commit()
     db.refresh(db_ingredient)
-
     return db_ingredient
 
 
-
-@router.delete("/{ingredient_id}")
-def delete_ingredient(
-    ingredient_id: int,
+@router.get("/stats")
+async def get_ingredient_stats(
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    db_ingredient = (
-        db.query(Ingredient)
-        .filter(Ingredient.id == ingredient_id)
-        .first()
-    )
-
-    if not db_ingredient:
-        raise HTTPException(
-            status_code=404,
-            detail="Ingrediente no encontrado"
-        )
-
-    db.delete(db_ingredient)
-    db.commit()
-
+    """Obtener estadísticas de ingredientes"""
+    total = db.query(Ingredient).filter(Ingredient.user_id == current_user.id).count()
+    
+    # Contar por categoría
+    categories = db.query(Ingredient.category, func.count(Ingredient.id)).filter(
+        Ingredient.user_id == current_user.id
+    ).group_by(Ingredient.category).all()
+    
     return {
-        "message": "Ingrediente eliminado correctamente"
+        "total": total,
+        "categories": [{"name": cat, "count": count} for cat, count in categories]
     }
