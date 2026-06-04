@@ -1,143 +1,181 @@
-from fastapi import HTTPException
-import json
-
-from fastapi import APIRouter
-from fastapi import Depends
-
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from typing import List, Optional
+from datetime import datetime
+from pydantic import BaseModel
 
 from app.database import get_db
+from app.auth import get_current_user
+from app.models import User, Recipe, Ingredient
+from app.services.llm_service import generate_recipe_from_ingredients
 
-from app.models.recipe import Recipe
+router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
-from app.schemas.recipe import RecipeCreate
+class RecipeCreate(BaseModel):
+    name: str
+    description: str = ""
+    ingredients: str
+    steps: str
+    prep_time: int = 30
+    difficulty: str = "Media"
 
-from app.models.ingredient import Ingredient
+class RecipeResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    ingredients: str
+    steps: str
+    prep_time: int
+    difficulty: str
+    is_favorite: bool
+    created_at: datetime
 
-from app.services.llm_service import generate_recipe
+    class Config:
+        from_attributes = True
 
-router = APIRouter(
-    prefix="/recipes",
-    tags=["Recipes"]
-)
 
-@router.post("/")
-def create_recipe(
-    recipe: RecipeCreate,
-    db: Session = Depends(get_db)
+@router.get("/", response_model=List[RecipeResponse])
+async def get_recipes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 50,
+    favorite_only: bool = False
 ):
-
-    new_recipe = Recipe(
-        title=recipe.title,
-    ingredients=recipe.ingredients,
-    steps=recipe.steps,
-    difficulty=recipe.difficulty,
-    estimated_time=recipe.estimated_time,
-    user_id=recipe.user_id
-    )
-
-    db.add(new_recipe)
-    db.commit()
-    db.refresh(new_recipe)
-
-    return new_recipe
-
-
-@router.get("/")
-def get_recipes(
-    db: Session = Depends(get_db)
-):
-
-    return db.query(
-        Recipe
-    ).all()
+    """Obtener todas las recetas del usuario"""
+    query = db.query(Recipe).filter(Recipe.user_id == current_user.id)
+    
+    if favorite_only:
+        query = query.filter(Recipe.is_favorite == True)
+    
+    recipes = query.order_by(Recipe.created_at.desc()).limit(limit).all()
+    return recipes
 
 
 @router.get("/{recipe_id}")
-def get_recipe(
+async def get_recipe(
     recipe_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
-    recipe = (
-        db.query(Recipe)
-        .filter(
-            Recipe.id == recipe_id
-        )
-        .first()
-    )
-
+    """Obtener una receta específica"""
+    recipe = db.query(Recipe).filter(
+        Recipe.id == recipe_id,
+        Recipe.user_id == current_user.id
+    ).first()
+    
     if not recipe:
-        return {
-            "message": "Receta no encontrada"
-        }
-
+        raise HTTPException(status_code=404, detail="Receta no encontrada")
+    
     return recipe
+
 
 @router.post("/generate")
-def generate_recipe_endpoint(
-    user_id: int,
+async def generate_recipe(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
-    inventory = (
-        db.query(Ingredient)
-        .filter(
-            Ingredient.user_id == user_id
-        )
-        .all()
-    )
-
-    if not inventory:
+    """Generar una nueva receta usando IA basada en los ingredientes del usuario"""
+    
+    # Obtener ingredientes del usuario
+    ingredients = db.query(Ingredient).filter(
+        Ingredient.user_id == current_user.id
+    ).all()
+    
+    if not ingredients:
         raise HTTPException(
-            status_code=404,
-            detail="No hay ingredientes registrados"
+            status_code=400, 
+            detail="No tienes ingredientes registrados. Agrega ingredientes primero."
         )
+    
+    ingredient_names = [i.name for i in ingredients]
+    
+    try:
+        # Llamar al servicio LLM
+        recipe_data = await generate_recipe_from_ingredients(ingredient_names)
+        
+        # Guardar receta en BD
+        new_recipe = Recipe(
+            name=recipe_data.get("nombre", "Receta Generada"),
+            description=recipe_data.get("descripcion", ""),
+            ingredients=recipe_data.get("ingredientes", ""),
+            steps=recipe_data.get("pasos", ""),
+            prep_time=recipe_data.get("tiempo", 30),
+            difficulty=recipe_data.get("dificultad", "Media"),
+            user_id=current_user.id
+        )
+        
+        db.add(new_recipe)
+        db.commit()
+        db.refresh(new_recipe)
+        
+        return {
+            "message": "Receta generada exitosamente",
+            "recipe": new_recipe
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generando receta: {str(e)}")
 
-    recipe_data = generate_recipe(inventory)
 
-    recipe = Recipe(
-        title=recipe_data["title"],
-        ingredients=json.dumps(
-            recipe_data["ingredients"]
-        ),
-        steps=json.dumps(
-            recipe_data["steps"]
-        ),
-        difficulty=recipe_data["difficulty"],
-        estimated_time=recipe_data["estimated_time"],
-        user_id=user_id
-    )
-
-    db.add(recipe)
+@router.post("/{recipe_id}/favorite")
+async def toggle_favorite(
+    recipe_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Marcar/Desmarcar receta como favorita"""
+    recipe = db.query(Recipe).filter(
+        Recipe.id == recipe_id,
+        Recipe.user_id == current_user.id
+    ).first()
+    
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Receta no encontrada")
+    
+    recipe.is_favorite = not recipe.is_favorite
     db.commit()
-    db.refresh(recipe)
+    
+    return {"is_favorite": recipe.is_favorite}
 
-    return recipe
 
 @router.delete("/{recipe_id}")
-def delete_recipe(
+async def delete_recipe(
     recipe_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-
-    recipe = (
-        db.query(Recipe)
-        .filter(
-            Recipe.id == recipe_id
-        )
-        .first()
-    )
-
+    """Eliminar una receta"""
+    recipe = db.query(Recipe).filter(
+        Recipe.id == recipe_id,
+        Recipe.user_id == current_user.id
+    ).first()
+    
     if not recipe:
-        raise HTTPException(
-            status_code=404,
-            detail="Receta no encontrada"
-        )
-
+        raise HTTPException(status_code=404, detail="Receta no encontrada")
+    
+    # Eliminar calificaciones asociadas
+    db.query(Rating).filter(Rating.recipe_id == recipe_id).delete()
+    
     db.delete(recipe)
     db.commit()
+    
+    return {"message": "Receta eliminada correctamente"}
 
+
+@router.get("/stats/summary")
+async def get_recipe_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Obtener estadísticas de recetas del usuario"""
+    total = db.query(Recipe).filter(Recipe.user_id == current_user.id).count()
+    favorites = db.query(Recipe).filter(
+        Recipe.user_id == current_user.id,
+        Recipe.is_favorite == True
+    ).count()
+    
     return {
-        "message": "Receta eliminada"
+        "total": total,
+        "favorites": favorites
     }
