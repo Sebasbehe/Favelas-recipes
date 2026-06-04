@@ -189,6 +189,12 @@ body {
     color: var(--primary);
 }
 
+.toggle-password:focus-visible,
+.btn-register:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 /* Password strength indicator */
 .password-strength {
     display: flex;
