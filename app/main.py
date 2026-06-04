@@ -18,11 +18,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def wait_for_db(retries=10, delay=3):
+    import sqlalchemy.exc
+    for i in range(retries):
+        try:
+            Base.metadata.create_all(bind=engine)
+            print(f"✅ Base de datos lista")
+            return
+        except sqlalchemy.exc.OperationalError:
+            print(f"⏳ Esperando DB... intento {i+1}/{retries}")
+            time.sleep(delay)
+    raise RuntimeError("❌ No se pudo conectar a la base de datos")
 
-time.sleep(5)
-
-
-Base.metadata.create_all(bind=engine)
+wait_for_db()
 
 app = FastAPI(
     title="Favelas Recipes - Generador de Recetas con IA",
