@@ -21,13 +21,19 @@ Git
 
 ## Instalación
 1. Clonar el repositorio
+        ```bash
         git clone https://github.com/Sebasbehe/Favelas-recipes.git
+        ```
 
 2. Crear y activar un entorno virtual:
-python -m venv venv        
+```bash
+python -m venv venv
+```        
 
 3. Instalar dependencias:
+```bash
 pip install -r requirements.txt
+```
 
 ```bash
 docker-compose up --build
