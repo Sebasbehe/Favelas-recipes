@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 
+
 class RecipeCreate(BaseModel):
+    """
+    Schema used to create a recipe.
+    """
+
     title: str
     ingredients: str
     steps: str
@@ -10,6 +15,10 @@ class RecipeCreate(BaseModel):
 
 
 class RecipeResponse(BaseModel):
+    """
+    Schema returned when a recipe is retrieved.
+    """
+
     id: int
     title: str
     ingredients: str
