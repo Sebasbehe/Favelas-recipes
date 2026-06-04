@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generar Receta - Favelas Recipes</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-utensils"></i>
+                <h1>Favelas Recipes</h1>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="/" class="nav-link">Dashboard</a></li>
+                <li><a href="/ingredients" class="nav-link">Ingredientes</a></li>
+                <li><a href="/recipes" class="nav-link">Recetas</a></li>
+                <li><a href="/profile" class="nav-link">Perfil</a></li>
+                <li><a href="/logout" class="nav-link logout">Salir</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-magic"></i> Generar Receta con IA</h3>
+            </div>
+            <div style="padding: 2rem; text-align: center;">
+                <button id="generateBtn" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.2rem;">
+                    <i class="fas fa-robot"></i> Generar Receta con mis Ingredientes
+                </button>
+                <div id="loading" style="display: none; margin-top: 2rem;">
+                    <i class="fas fa-spinner fa-spin"></i> Generando receta...
+                </div>
+                <div id="result" style="margin-top: 2rem; text-align: left; display: none;">
+                    <div class="card" style="padding: 1.5rem;">
+                        <h2 id="recipeName"></h2>
+                        <p id="recipeDesc"></p>
+                        <hr>
+                        <h4><i class="fas fa-list"></i> Ingredientes</h4>
+                        <p id="recipeIngredients"></p>
+                        <h4><i class="fas fa-clipboard-list"></i> Preparación</h4>
+                        <p id="recipeSteps"></p>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> <span id="recipeTime"></span> min</span>
+                            <span><i class="fas fa-signal"></i> <span id="recipeDiff"></span></span>
+                        </div>
+                        <a href="/recipes" class="btn btn-primary">Ver mis recetas</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('access_token');
+
+        document.getElementById('generateBtn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/recipes/generate', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('recipeName').textContent = data.recipe.name;
+                    document.getElementById('recipeDesc').textContent = data.recipe.description;
+                    document.getElementById('recipeIngredients').textContent = data.recipe.ingredients;
+                    document.getElementById('recipeSteps').textContent = data.recipe.steps;
+                    document.getElementById('recipeTime').textContent = data.recipe.prep_time;
+                    document.getElementById('recipeDiff').textContent = data.recipe.difficulty;
+                    result.style.display = 'block';
+                } else if (response.status === 400) {
+                    const error = await response.json();
+                    alert(error.detail);
+                } else if (response.status === 401) {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                alert('Error al generar receta: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
