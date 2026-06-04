@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-
 from app.database import Base
-
 
 class Ingredient(Base):
 
@@ -22,6 +20,11 @@ class Ingredient(Base):
     quantity = Column(
         String,
         nullable=False
+    )
+
+    category = Column(
+        String,
+        default=""
     )
 
     user_id = Column(

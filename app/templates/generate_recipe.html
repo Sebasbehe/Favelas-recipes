@@ -36,15 +36,16 @@
                 <div id="loading" style="display: none; margin-top: 2rem;">
                     <i class="fas fa-spinner fa-spin"></i> Generando receta...
                 </div>
+                <div id="error" style="display: none; margin-top: 2rem; padding: 1rem; background-color: #fee; border: 1px solid #f99; border-radius: 4px; color: #c33;"></div>
                 <div id="result" style="margin-top: 2rem; text-align: left; display: none;">
                     <div class="card" style="padding: 1.5rem;">
                         <h2 id="recipeName"></h2>
                         <p id="recipeDesc"></p>
                         <hr>
                         <h4><i class="fas fa-list"></i> Ingredientes</h4>
-                        <p id="recipeIngredients"></p>
+                        <div id="recipeIngredients" style="white-space: pre-wrap;"></div>
                         <h4><i class="fas fa-clipboard-list"></i> Preparación</h4>
-                        <p id="recipeSteps"></p>
+                        <div id="recipeSteps" style="white-space: pre-wrap;"></div>
                         <div class="recipe-meta">
                             <span><i class="fas fa-clock"></i> <span id="recipeTime"></span> min</span>
                             <span><i class="fas fa-signal"></i> <span id="recipeDiff"></span></span>
@@ -58,15 +59,25 @@
 
     <script>
         const token = localStorage.getItem('access_token');
+        const generateBtn = document.getElementById('generateBtn');
 
-        document.getElementById('generateBtn')?.addEventListener('click', async () => {
-            const btn = document.getElementById('generateBtn');
+        // Validar token
+        if (!token) {
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Por favor inicia sesión primero';
+            alert('Debes iniciar sesión para generar recetas');
+            window.location.href = '/login';
+        }
+
+        generateBtn.addEventListener('click', async () => {
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
 
-            btn.disabled = true;
+            generateBtn.disabled = true;
             loading.style.display = 'block';
             result.style.display = 'none';
+            errorDiv.style.display = 'none';
 
             try {
                 const response = await fetch('/api/recipes/generate', {
@@ -76,26 +87,38 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    document.getElementById('recipeName').textContent = data.recipe.name;
-                    document.getElementById('recipeDesc').textContent = data.recipe.description;
-                    document.getElementById('recipeIngredients').textContent = data.recipe.ingredients;
-                    document.getElementById('recipeSteps').textContent = data.recipe.steps;
-                    document.getElementById('recipeTime').textContent = data.recipe.prep_time;
-                    document.getElementById('recipeDiff').textContent = data.recipe.difficulty;
+                    const recipe = data.recipe || data; // Maneja ambos formatos
+                    
+                    document.getElementById('recipeName').textContent = recipe.name;
+                    document.getElementById('recipeDesc').textContent = recipe.description;
+                    document.getElementById('recipeIngredients').textContent = recipe.ingredients;
+                    document.getElementById('recipeSteps').textContent = recipe.steps;
+                    document.getElementById('recipeTime').textContent = recipe.prep_time;
+                    document.getElementById('recipeDiff').textContent = recipe.difficulty;
+                    
                     result.style.display = 'block';
                 } else if (response.status === 400) {
                     const error = await response.json();
-                    alert(error.detail);
+                    mostrarError(error.detail || 'No tienes ingredientes registrados');
                 } else if (response.status === 401) {
                     window.location.href = '/login';
+                } else {
+                    mostrarError(`Error del servidor: ${response.status}`);
                 }
             } catch (error) {
-                alert('Error al generar receta: ' + error.message);
+                mostrarError('Error al generar receta: ' + error.message);
+                console.error('Error:', error);
             } finally {
-                btn.disabled = false;
+                generateBtn.disabled = false;
                 loading.style.display = 'none';
             }
         });
+
+        function mostrarError(mensaje) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = '⚠️ ' + mensaje;
+            errorDiv.style.display = 'block';
+        }
     </script>
 </body>
 </html>

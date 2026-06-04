@@ -12,17 +12,19 @@ router = APIRouter(
     tags=["ingredients"]
 )
 
-# Schemas
 
+# Schemas
 class IngredientCreate(BaseModel):
     name: str
     quantity: str = ""
+    category: str = ""
 
 
 class IngredientResponse(BaseModel):
     id: int
     name: str
     quantity: str
+    category: str = ""
 
     class Config:
         from_attributes = True
@@ -51,6 +53,7 @@ async def create_ingredient(
     new_ingredient = Ingredient(
         name=ingredient.name,
         quantity=ingredient.quantity,
+        category=ingredient.category,
         user_id=current_user.id
     )
 
@@ -85,6 +88,7 @@ async def update_ingredient(
 
     db_ingredient.name = ingredient.name
     db_ingredient.quantity = ingredient.quantity
+    db_ingredient.category = ingredient.category
 
     db.commit()
     db.refresh(db_ingredient)
