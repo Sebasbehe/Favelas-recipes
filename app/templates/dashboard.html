@@ -1,0 +1,394 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Favelas Recipes AI</title>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Segoe UI',sans-serif;
+}
+
+body{
+display:flex;
+height:100vh;
+background:#f1f5f9;
+}
+
+.sidebar{
+width:260px;
+background:#0f172a;
+color:white;
+padding:25px;
+}
+
+.sidebar h2{
+margin-bottom:30px;
+text-align:center;
+}
+
+.sidebar ul{
+list-style:none;
+}
+
+.sidebar li{
+padding:15px;
+border-radius:10px;
+margin-bottom:10px;
+cursor:pointer;
+transition:.3s;
+}
+
+.sidebar li:hover{
+background:#1e293b;
+}
+
+.content{
+flex:1;
+padding:30px;
+overflow:auto;
+}
+
+.card{
+background:white;
+padding:25px;
+border-radius:20px;
+box-shadow:0 5px 20px rgba(0,0,0,.08);
+margin-bottom:25px;
+}
+
+.card h2{
+margin-bottom:20px;
+color:#1e293b;
+}
+
+input{
+padding:12px;
+border:1px solid #d1d5db;
+border-radius:10px;
+margin-right:10px;
+margin-bottom:10px;
+width:220px;
+}
+
+button{
+padding:12px 20px;
+border:none;
+border-radius:10px;
+background:#2563eb;
+color:white;
+cursor:pointer;
+font-weight:bold;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:15px;
+}
+
+table th,
+table td{
+padding:12px;
+border-bottom:1px solid #e5e7eb;
+text-align:left;
+}
+
+.recipe-box{
+background:#f8fafc;
+padding:20px;
+border-radius:15px;
+margin-top:20px;
+min-height:200px;
+}
+
+.recipe-box h3{
+margin-bottom:15px;
+}
+
+.loading{
+display:none;
+margin-top:15px;
+font-weight:bold;
+color:#2563eb;
+}
+
+.logout{
+margin-top:30px;
+background:#dc2626;
+}
+
+.logout:hover{
+background:#b91c1c;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<h2>🍳 Favelas Recipes</h2>
+
+<ul>
+<li><i class="fa-solid fa-house"></i> Dashboard</li>
+<li><i class="fa-solid fa-carrot"></i> Ingredientes</li>
+<li><i class="fa-solid fa-book"></i> Recetas IA</li>
+</ul>
+
+<button class="logout" onclick="logout()">
+Cerrar sesión
+</button>
+
+</div>
+
+<div class="content">
+
+<div class="card">
+
+<h2>Agregar Ingrediente</h2>
+
+<input
+id="ingredientName"
+placeholder="Nombre">
+
+<input
+id="ingredientQuantity"
+placeholder="Cantidad">
+
+<button onclick="addIngredient()">
+Agregar
+</button>
+
+</div>
+
+<div class="card">
+
+<h2>Inventario</h2>
+
+<table>
+
+<thead>
+<tr>
+<th>Nombre</th>
+<th>Cantidad</th>
+</tr>
+</thead>
+
+<tbody id="ingredientsTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="card">
+
+<h2>Generar Receta con IA</h2>
+
+<button onclick="generateRecipe()">
+Generar Receta
+</button>
+
+<div class="loading" id="loading">
+Generando receta...
+</div>
+
+<div class="recipe-box" id="recipeResult">
+
+<h3>Resultado</h3>
+
+<p>
+Aquí aparecerá la receta generada.
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const USER_ID = 1;
+
+async function addIngredient(){
+
+const name =
+document.getElementById(
+"ingredientName"
+).value;
+
+const quantity =
+document.getElementById(
+"ingredientQuantity"
+).value;
+
+if(!name || !quantity){
+alert("Complete todos los campos");
+return;
+}
+
+const response =
+await fetch(
+"/ingredients/",
+{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+name:name,
+quantity:quantity,
+user_id:USER_ID
+})
+}
+);
+
+if(response.ok){
+
+document.getElementById(
+"ingredientName"
+).value="";
+
+document.getElementById(
+"ingredientQuantity"
+).value="";
+
+loadIngredients();
+
+}else{
+
+alert(
+"Error al guardar ingrediente"
+);
+
+}
+
+}
+
+async function loadIngredients(){
+
+const response =
+await fetch("/ingredients/");
+
+const data =
+await response.json();
+
+const table =
+document.getElementById(
+"ingredientsTable"
+);
+
+table.innerHTML = "";
+
+data.forEach(item=>{
+
+table.innerHTML += `
+<tr>
+<td>${item.name}</td>
+<td>${item.quantity}</td>
+</tr>
+`;
+
+});
+
+}
+
+async function generateRecipe(){
+
+document.getElementById(
+"loading"
+).style.display="block";
+
+const response =
+await fetch(
+`/recipes/generate?user_id=${USER_ID}`,
+{
+method:"POST"
+}
+);
+
+const data =
+await response.json();
+
+document.getElementById(
+"loading"
+).style.display="none";
+
+document.getElementById(
+"recipeResult"
+).innerHTML = `
+
+<h3>${data.title}</h3>
+
+<p>
+<strong>Ingredientes:</strong>
+</p>
+
+<p>
+${data.ingredients}
+</p>
+
+<br>
+
+<p>
+<strong>Pasos:</strong>
+</p>
+
+<p>
+${data.steps}
+</p>
+
+<br>
+
+<p>
+<strong>Dificultad:</strong>
+${data.difficulty}
+</p>
+
+<p>
+<strong>Tiempo:</strong>
+${data.estimated_time}
+</p>
+
+`;
+
+}
+
+function logout(){
+
+localStorage.removeItem(
+"token"
+);
+
+window.location.href =
+"/login";
+
+}
+
+loadIngredients();
+
+</script>
+
+</body>
+</html>
+```

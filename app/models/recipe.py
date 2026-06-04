@@ -1,10 +1,9 @@
-from xmlrpc.client import Boolean
-
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy import ForeignKey
+from sqlalchemy import Boolean
 
 from sqlalchemy.orm import relationship
 
@@ -45,7 +44,7 @@ class Recipe(Base):
         "Rating",
         back_populates="recipe"
     )
-    
+
     generated_by_ai = Column(
     Boolean,
     default=True

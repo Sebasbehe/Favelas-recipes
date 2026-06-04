@@ -1,4 +1,9 @@
+
 from fastapi import FastAPI
+from fastapi import Request
+
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from app.database import Base
 from app.database import engine
@@ -11,7 +16,6 @@ from app.routers.ratings import router as ratings_router
 import app.models
 import time
 
-# Esperar PostgreSQL
 time.sleep(10)
 
 Base.metadata.create_all(
@@ -20,6 +24,16 @@ Base.metadata.create_all(
 
 app = FastAPI(
     title="Generador de Recetas"
+)
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
+)
+
+templates = Jinja2Templates(
+    directory="templates"
 )
 
 app.include_router(auth_router)
@@ -32,3 +46,24 @@ def root():
     return {
         "message": "API funcionando"
     }
+
+@app.get("/login")
+def login_page(request: Request):
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request}
+    )
+
+@app.get("/register")
+def register_page(request: Request):
+    return templates.TemplateResponse(
+        "register.html",
+        {"request": request}
+    )
+
+@app.get("/dashboard")
+def dashboard_page(request: Request):
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request}
+    )
