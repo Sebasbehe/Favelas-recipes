@@ -80,7 +80,7 @@
             errorDiv.style.display = 'none';
 
             try {
-                const response = await fetch('/api/recipes/generate', {
+                const response = await fetch('app/routers/recipes.py', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
