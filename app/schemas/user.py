@@ -3,6 +3,9 @@ from pydantic import EmailStr
 
 
 class UserRegister(BaseModel):
+    """
+    Schema used for user registration.
+    """
 
     username: str
     email: EmailStr
@@ -10,6 +13,9 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
+    """
+    Schema used for user authentication.
+    """
 
     username: str
     password: str
