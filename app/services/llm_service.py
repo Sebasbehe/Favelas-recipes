@@ -14,7 +14,6 @@ async def generate_recipe_from_ingredients(ingredients: List[str]) -> Dict[str, 
     """
     
     if not OPENROUTER_API_KEY:
-        # Si no hay API key, devolver receta de ejemplo (modo demostración)
         return get_demo_recipe(ingredients)
     
     prompt = f"""
@@ -55,12 +54,12 @@ async def generate_recipe_from_ingredients(ingredients: List[str]) -> Dict[str, 
         )
         
         if response.status_code != 200:
-            raise Exception(f"Error llamando a OpenRouter: {response.text}")
+            print(f"⚠️ OpenRouter error {response.status_code}: {response.text}")
+            return get_demo_recipe(ingredients)
         
         data = response.json()
         content = data["choices"][0]["message"]["content"]
         
-        # Limpiar y parsear JSON
         content = content.strip()
         if content.startswith("```json"):
             content = content[7:]
@@ -73,8 +72,8 @@ async def generate_recipe_from_ingredients(ingredients: List[str]) -> Dict[str, 
         try:
             recipe = json.loads(content)
             return recipe
-        except json.JSONDecodeError:
-            # Si falla el parseo, devolver receta de ejemplo
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            print(f"⚠️ Error parseando respuesta LLM: {e}")
             return get_demo_recipe(ingredients)
 
 
