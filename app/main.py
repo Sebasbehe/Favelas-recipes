@@ -179,7 +179,6 @@ async def recipe_detail_page(request: Request, recipe_id: int):
         "recipe_detail.html",
         {
             "request": request,
-            "request": request,
             "recipe_id": recipe_id,
             "title": "Detalle de Receta"
         }
