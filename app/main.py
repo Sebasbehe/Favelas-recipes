@@ -20,15 +20,18 @@ load_dotenv()
 
 def wait_for_db(retries=10, delay=3):
     import sqlalchemy.exc
+
     for i in range(retries):
         try:
             Base.metadata.create_all(bind=engine)
-            print(f"✅ Base de datos lista")
+            print("✅ Base de datos lista")
             return
-        except sqlalchemy.exc.OperationalError:
-              print(f"ERROR DB: {e}")
-    print(f"⏳ Esperando DB... intento {i+1}/{retries}")
-    time.sleep(delay)
+
+        except sqlalchemy.exc.OperationalError as e:
+            print(f"ERROR DB: {e}")
+            print(f"⏳ Esperando DB... intento {i+1}/{retries}")
+            time.sleep(delay)
+
     raise RuntimeError("❌ No se pudo conectar a la base de datos")
 
 wait_for_db()
